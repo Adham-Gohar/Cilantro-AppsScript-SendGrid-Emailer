@@ -1,0 +1,75 @@
+
+// Include your SendGrid API key and sender email address
+const sendGridApiKey = 'XXXXX';
+const senderEmail = 'XXXX';
+
+function sendDataInEmail() {
+  // Get the active spreadsheet, panel sheet, and source sheet
+  var ui = SpreadsheetApp.getUi();
+  var sourceSpreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var panelSheet = sourceSpreadsheet.getSheetByName('Sheet1');
+  var sourceSheet = sourceSpreadsheet.getSheetByName('Raw Data');
+  
+  // Prompt the user for recipients, cc, bcc, subject, and header text
+  var recipients = panelSheet.getRange('B15').getValue();
+  var ccRecipients = panelSheet.getRange('B16').getValue();
+  var bccRecipients = panelSheet.getRange('B17').getValue();
+  var emailSubject = panelSheet.getRange('B19').getValue();
+  var emailHeaderText = panelSheet.getRange('B20').getValue();
+  var emailData = panelSheet.getRange('B21').getValue();
+
+  // Get the data range based on user input
+  var data = sourceSheet.getRange(emailData).getValues();
+
+  // Create HTML for the email body
+  var emailBody = `<html><body>`;
+  emailBody += `<h2>${emailHeaderText}</h2>`;
+  emailBody += `<table border="1"><tr><th>${data[0].join('</th><th>')}</th></tr>`;
+  for (var i = 1; i < data.length; i++) {
+    emailBody += `<tr><td>${data[i].join('</td><td>')}</td></tr>`;
+  }
+  emailBody += `</table></body></html>`;
+
+  // Prepare the payload for SendGrid API
+  var payload = {
+    personalizations: [{
+      to: recipients.split(',').map(email => ({ email: email })),
+      cc: ccRecipients.split(',').map(email => ({ email: email })),
+      bcc: bccRecipients.split(',').map(email => ({ email: email })),
+      subject: emailSubject
+    }],
+    from: {
+      email: senderEmail
+    },
+    content: [{
+      type: 'text/html',
+      value: emailBody
+    }]
+  };
+
+  // Send the email using SendGrid API
+  sendEmailUsingSendGrid(payload);
+}
+
+function sendEmailUsingSendGrid(payload) {
+  var sendGridUrl = 'https://api.sendgrid.com/v3/mail/send';
+
+  // Create the SendGrid API request headers
+  var headers = {
+    'Authorization': 'Bearer ' + sendGridApiKey,
+    'Content-Type': 'application/json'
+  };
+
+  // Create the SendGrid API request options
+  var options = {
+    'method': 'post',
+    'headers': headers,
+    'payload': JSON.stringify(payload)
+  };
+
+  // Send the email using SendGrid API and log the response
+  var response = UrlFetchApp.fetch(sendGridUrl, options);
+  Logger.log(response.getContentText());
+}
+
+
